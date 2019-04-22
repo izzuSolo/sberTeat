@@ -9,7 +9,7 @@ import static spark.Spark.get;
 import static spark.Spark.port;
 
 
-class ThreadCafe extends Thread{
+class ThreadCafe implements Runnable{
     public void run(){
         try (Connection db = DriverManager.getConnection("jdbc:h2:~/test:")) {
             try (Statement dataQuery = db.createStatement()){
@@ -50,22 +50,20 @@ class ThreadJson implements Runnable {
                         if(dataQuery.excute(query)) {
                             ResultSet rs = dataQuery.executeQuery(query);
                             mapCafe.put("name", "cafe_" + cafenum);
+                            gson.toJson(mapCafe);
+                            mapCafe.clear();
                             while (rs.next()) {
                                 int avg = rs.getInt("avg");
                                 mapAvg.put("traffic_avg_day", avg);
+                                gson.toJson(mapAvg);
+                                mapAvg.clear();
                             }
                         }else{
                             break;
                         }
                     }
-                    HashMap<HashMap, HashMap> bigMap = new HashMap<>();
-                    bigMap.put(mapCafe, mapAvg);
-                    gson.toJson(bigMap);
                     String rezult = gson.fromJson();
                     get("/getTrafficAvg", (req, res) -> rezult);
-                    bigMap.clear();
-                    mapCafe.clear();
-                    mapAvg.clear();
                     try{
                         sleep(3000);
                     } catch(Exception e){}
@@ -82,7 +80,7 @@ public class Cafe {
 
     public static void main(String[] args) {
         port(8090);
-        ThreadCafe cafeStart = new ThreadCafe();
+        Thread cafeStart = new Thread(new ThreadCafe());
         cafeStart.start();
         Thread json = new Thread(new ThreadJson());
         json.start();
