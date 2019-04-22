@@ -36,26 +36,40 @@ class ThreadCafe extends Thread{
     }
 }
 
-class Json {
-    public static String map(){
+class ThreadJson implements Runnable {
+    public static run(){
         Gson gson = new Gson();
         HashMap<String, String> mapCafe = new HashMap<>();
         HashMap<String, Integer> mapAvg = new HashMap<>();
 
         try (Connection db = DriverManager.getConnection("jdbc:h2:~/test:")) {
-            try (Statement dataQuery = db.createStatement()){
-                for(int cafenum = 1; cafenum <= 5; cafenum++){
-                    String query = "SELECT AVG(COUNTCLIENTS)as avg FROM VISITS WHERE CAFENAME = 'cafe_" + cafenum + "'";
-                    ResultSet rs = dataQuery.executeQuery(query);
-                    mapCafe.put("name", "cafe_" + cafenum);
-                    while(rs.next()){
-                        int avg = rs.getInt("avg");
-                        mapAvg.put("traffic_avg_day", avg);
+            try (Statement dataQuery = db.createStatement()) {
+                for (int index = 0; index < 500; index++) {
+                    for (int cafenum = 1; cafenum <= 5; cafenum++) {
+                        String query = "SELECT AVG(COUNTCLIENTS)as avg FROM VISITS WHERE CAFENAME = 'cafe_" + cafenum + "'";
+                        if(dataQuery.excute(query)) {
+                            ResultSet rs = dataQuery.executeQuery(query);
+                            mapCafe.put("name", "cafe_" + cafenum);
+                            while (rs.next()) {
+                                int avg = rs.getInt("avg");
+                                mapAvg.put("traffic_avg_day", avg);
+                            }
+                        }else{
+                            break;
+                        }
                     }
+                    HashMap<HashMap, HashMap> bigMap = new HashMap<>();
+                    bigMap.put(mapCafe, mapAvg);
+                    gson.toJson(bigMap);
+                    String rezult = gson.fromJson();
+                    get("/getTrafficAvg", (req, res) -> rezult);
+                    bigMap.clear();
+                    mapCafe.clear();
+                    mapAvg.clear();
+                    try{
+                        sleep(3000);
+                    } catch(Exception e){}
                 }
-                HashMap<HashMap, HashMap> bigMap = new HashMap<>();
-                bigMap.put(mapCafe, mapAvg);
-                return gson.toJson(bigMap);
             }
         } catch (SQLException ex) {
             System.out.println("Database connection failure: "
@@ -69,12 +83,8 @@ public class Cafe {
     public static void main(String[] args) {
         port(8090);
         ThreadCafe cafeStart = new ThreadCafe();
-        cafeStart.run();
-        int index = 0;
-        while(index > 500){
-            String rez = Json.map();
-            get("/getTrafficAvg", (request, response) -> rez);
-            index++;
-        }
+        cafeStart.start();
+        Thread json = new Thread(new ThreadJson());
+        json.start();
     }
 }
