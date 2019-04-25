@@ -18,7 +18,7 @@ class ThreadCafe implements Runnable{
                     for(int cafenum = 1; cafenum <= 5; cafenum++){
                         int customerCount = 0;
                         for (int j = 0; j < 20; j++){
-                            customerCount += Math.random() * 10;
+                            customerCount += (int) (Math.random() * 10);
                         }
                         String query = "INSERT INTO VISITS VALUES('cafe_" + cafenum + "', " + customerCount +", " + day + " )";
                         dataQuery.execute(query);
